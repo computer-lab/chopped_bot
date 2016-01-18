@@ -9,8 +9,41 @@ import tweepy
 import os
 import textwrap
 import gspread
+import flickr_api
 from oauth2client.client import SignedJwtAssertionCredentials
+from cStringIO import StringIO
 
+def rescale(img, width, height, force=True):
+	"""Rescale the given image, optionally cropping it to make sure the result image has the specified width and height."""
+
+
+	max_width = width
+	max_height = height
+	if not force:
+		img.thumbnail((max_width, max_height), Image.ANTIALIAS)
+	else:
+		src_width, src_height = img.size
+		src_ratio = float(src_width) / float(src_height)
+		dst_width, dst_height = max_width, max_height
+		dst_ratio = float(dst_width) / float(dst_height)
+
+		if dst_ratio < src_ratio:
+			crop_height = src_height
+			crop_width = crop_height * dst_ratio
+			x_offset = float(src_width - crop_width) / 2
+			y_offset = 0
+		else:
+			crop_width = src_width
+			crop_height = crop_width / dst_ratio
+			x_offset = 0
+			y_offset = float(src_height - crop_height) / 3
+		img = img.crop((int(x_offset), int(y_offset), int(x_offset)+int(crop_width), int(y_offset)+int(crop_height)))
+		img = img.resize((dst_width, dst_height), Image.ANTIALIAS)
+
+	output_data = img.save('background.png')
+
+
+	return output_data
 
 
 def creds():
@@ -91,14 +124,45 @@ def draw_words(word,y,wrap):
 
 normal_array, weird_array =  build_arrays()
 
+
+flickr_api.set_keys(api_key = '5143fde92484db1943a4f851f8463c93', api_secret = '81af5151a3f0d903')
+
 normal1, normal2 = retrieve_two_elements(normal_array)
 weird1, weird2 = retrieve_two_elements(weird_array)
+print weird2
+w = flickr_api.Photo.search(text=weird2,per_page=100,page=1)
+photos = []
+for p in w:
+	photos.append(p)
+p = random.choice(photos)
+try:
+	p.save("image.png",size_label = 'Original')
+except Exception:
+	p = random.choice(photos)
+	p.save("image.png",size_label = 'Original')
+
+
+new_height = int(340)
+new_width  = int(350)
+im = Image.open('image.png')
+background = rescale(im,new_width,new_height)
+background = Image.open('background.png')
+new_background = Image.new('RGBA', (540,340))
+x, y = background.size
+new_background.paste(background, (190,0))
+new_background.save('background.png')
+
 img = Image.open('template.png')
-font = ImageFont.truetype('microgramma.ttf', 12)
+font = ImageFont.truetype('Arial Bold.ttf', 14)
 draw = ImageDraw.Draw(img)
 print normal1, normal2, weird1, weird2
 draw_words(normal1,80,14)
 draw_words(weird1,130,13)
 draw_words(normal2,180,12)
 draw_words(weird2,230,13)
-img.save('sample-out.png')
+img.save('foreground.png')
+foreground = Image.open('foreground.png')
+background = Image.open('background.png')
+background.paste(foreground, (0, 0),foreground)
+background.save('output.png')
+
