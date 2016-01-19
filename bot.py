@@ -12,6 +12,7 @@ import gspread
 import flickr_api
 from oauth2client.client import SignedJwtAssertionCredentials
 from cStringIO import StringIO
+from time import sleep
 
 def rescale(img, width, height, force=True):
 	"""Rescale the given image, optionally cropping it to make sure the result image has the specified width and height."""
@@ -67,10 +68,10 @@ def twitter_api(consumer_key, consumer_secret, access_token, access_token_secret
     return api
 
 
-def tweet_image(image, txt):
+def tweet_image(image, txt, consumer_key, consumer_secret, access_token, access_token_secret):
     api = twitter_api(consumer_key, consumer_secret, access_token, access_token_secret)
-    api.update_with_media(tote, status=txt)
-    os.remove(tote)
+    api.update_with_media(image, status=txt)
+    os.remove(image)
 
 
 def build_arrays():
@@ -120,49 +121,68 @@ def draw_words(word,y,wrap):
 			words = words[1:]
 			nextline = ' '.join(words)
 			draw.text((57, y+14),nextline.upper(),(255,237,143),font=font,anchor='right')
-#consumer_key, consumer_secret, access_token, access_token_secret = creds()
+
+farts = True
+
+consumer_key, consumer_secret, access_token, access_token_secret = creds()
 
 normal_array, weird_array =  build_arrays()
 
 
 flickr_api.set_keys(api_key = '5143fde92484db1943a4f851f8463c93', api_secret = '81af5151a3f0d903')
 
-normal1, normal2 = retrieve_two_elements(normal_array)
-weird1, weird2 = retrieve_two_elements(weird_array)
-print weird2
-w = flickr_api.Photo.search(text=weird2,per_page=100,page=1)
-photos = []
-for p in w:
-	photos.append(p)
-p = random.choice(photos)
-try:
-	p.save("image.png",size_label = 'Original')
-except Exception:
+while farts is True:
+
+	normal1, normal2 = retrieve_two_elements(normal_array)
+	weird1, weird2 = retrieve_two_elements(weird_array)
+	print weird2
+	w = flickr_api.Photo.search(text=weird2,per_page=200,page=1)
+	photos = []
+	for p in w:
+		photos.append(p)
 	p = random.choice(photos)
-	p.save("image.png",size_label = 'Original')
+	gotphoto = False
+	while gotphoto is False:
+		try:
+			p.save("image.png",size_label = 'Original')
+			print 'Got Photo'
+			gotphoto = True
+		except Exception:
+			print 'Did not get photo, retrying'
+			p = random.choice(photos)
+			p.save("image.png",size_label = 'Original')
+			print 'Got Photo'
+			gotphoto = True
+			pass
 
 
-new_height = int(340)
-new_width  = int(350)
-im = Image.open('image.png')
-background = rescale(im,new_width,new_height)
-background = Image.open('background.png')
-new_background = Image.new('RGBA', (540,340))
-x, y = background.size
-new_background.paste(background, (190,0))
-new_background.save('background.png')
+	new_height = int(340)
+	new_width  = int(350)
+	im = Image.open('image.png')
+	background = rescale(im,new_width,new_height)
+	background = Image.open('background.png')
+	new_background = Image.new('RGBA', (540,340))
+	x, y = background.size
+	new_background.paste(background, (190,0))
+	new_background.save('background.png')
 
-img = Image.open('template.png')
-font = ImageFont.truetype('Arial Bold.ttf', 14)
-draw = ImageDraw.Draw(img)
-print normal1, normal2, weird1, weird2
-draw_words(normal1,80,14)
-draw_words(weird1,130,13)
-draw_words(normal2,180,12)
-draw_words(weird2,230,13)
-img.save('foreground.png')
-foreground = Image.open('foreground.png')
-background = Image.open('background.png')
-background.paste(foreground, (0, 0),foreground)
-background.save('output.png')
+	img = Image.open('template.png')
+	font = ImageFont.truetype('Arial Bold.ttf', 14)
+	draw = ImageDraw.Draw(img)
+	print normal1, normal2, weird1, weird2
+	draw_words(normal1,80,14)
+	draw_words(weird1,130,13)
+	draw_words(normal2,180,12)
+	draw_words(weird2,230,13)
+	img.save('foreground.png')
+	foreground = Image.open('foreground.png')
+	background = Image.open('background.png')
+	background.paste(foreground, (0, 0),foreground)
+	background.save('output.png')
+
+	txt = normal1 + '\n' + weird1 + '\n' + normal2 + '\n' + weird2
+
+	tweet_image('output.png', txt, consumer_key, consumer_secret, access_token, access_token_secret)
+	print 'Tweeted ... now waiting'
+	time.sleep(random.randint(2600,2700))
 
