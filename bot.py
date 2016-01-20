@@ -184,5 +184,5 @@ while farts is True:
 
 	tweet_image('output.png', txt, consumer_key, consumer_secret, access_token, access_token_secret)
 	print 'Tweeted ... now waiting'
-	time.sleep(random.randint(2600,2700))
+	time.sleep(random.randint(38200,43200))
 
